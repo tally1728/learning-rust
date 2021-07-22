@@ -1,5 +1,7 @@
 // randクレート（乱数生成器）を導入
 use rand::Rng;
+// ２つの値の比較結果（列挙型）を導入
+use std::cmp::Ordering;
 // 標準ライブラリの入出力ライブラリを導入
 use std::io;
 
@@ -55,4 +57,22 @@ fn main() {
     // 文字列 "You guessed: " と guess の値を表示するマクロ
     // {} がプレースホルダーとなっている。
     println!("You guessed: {}", guess);
+
+    // guess の cmp メソッドを呼び出して、secret_number との大小関係を比較する。
+    // 比較結果は Ordering オブジェクト（列挙型）として出力される。
+    // 例えば guess が secret_number より大きい場合は、
+    // 比較結果として値 Ordering::Greater を返す。
+    // pub fn cmp(&self, other: &u32) -> Ordering
+    // match 式で比較結果に該当する処理を実行する。
+    match guess.cmp(&secret_number) {
+        // 比較結果が Ordering::Less の場合、
+        // つまり guess が secret_number より小さい場合、文字列 "Too small!" を出力
+        Ordering::Less => println!("Too small!"),
+        // 比較結果が Ordering::Greater の場合、
+        // つまり guess が secret_number より大きい場合、文字列 "Too big!" を出力
+        Ordering::Greater => println!("Too big!"),
+        // 比較結果が Ordering::Equal の場合、
+        // つまり guess と secret_number が等しい場合、文字列 "You win!" を出力
+        Ordering::Equal => println!("You win!"),
+    }
 }
