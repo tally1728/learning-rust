@@ -92,8 +92,13 @@ fn main() {
             // つまり guess が secret_number より大きい場合、文字列 "Too big!" を出力
             Ordering::Greater => println!("Too big!"),
             // 比較結果が Ordering::Equal の場合、
-            // つまり guess と secret_number が等しい場合、文字列 "You win!" を出力
-            Ordering::Equal => println!("You win!"),
+            // つまり guess と secret_number が等しい場合、
+            Ordering::Equal => {
+                // 文字列 "You win!" を出力して、
+                println!("You win!");
+                // ループを抜ける。
+                break;
+            }
         }
     }
 }
