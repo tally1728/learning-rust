@@ -1,4 +1,4 @@
-// randクレート（乱数生成器）を導入
+// randクレート（擬似乱数生成器）を導入
 use rand::Rng;
 // ２つの値の比較結果（列挙型）を導入
 use std::cmp::Ordering;
@@ -61,18 +61,23 @@ fn main() {
         // 文字列から冒頭と末尾の空白を除去する。
         // pub fn trim(&self) -> &str
         // 3. parse メソッドを呼び出して、文字列を解析して別の型に変換する。
-        // 先に u32 型がしていされているので、u32 型に変換しようと試みる。
+        // 先に u32 型が指定されているので、u32 型に変換しようと試みる。
         // 変換結果は Result オブジェクトとして返される。
         // pub fn parse<F>(&self) -> Result<F, <F as FromStr>::Err>
-        // 4. Result オブジェクトの expect メソッドを呼び出す。
-        // もし型変換処理が失敗した場合、
-        // 文字列 "Please type a number!" とエラー内容を含む
-        // パニックメッセージを表示して、プログラムを終了させる。
-        // もし型変換処理が成功した場合、
-        // Ok 列挙子が保持する値、つまり u32 型に変換された値を返す。
-        // pub fn expect(self, msg: &str) -> T
-        // 5. u32 型に変換された値が guess へ代入される。
-        let guess: u32 = guess.trim().parse().expect("Please type a number!");
+        // 4. match 式で変換可否に対応する処理を実行する。
+        // 5. match 式の評価結果（u32 型に変換された値）が guess へ代入される。
+        let guess: u32 = match guess.trim().parse() {
+            // もし型変換処理が成功した場合、
+            // Ok 列挙子が保持する値、つまり u32 型に変換された値を返す。
+            Ok(num) => num,
+            // もし型変換処理が失敗した場合、
+            Err(_) => {
+                // 文字列 "Please type a number!" を表示する。
+                println!("Please type a number!");
+                // 後続の処理を中止して、次のループを開始する。
+                continue;
+            }
+        };
 
         // 文字列 "You guessed: " と guess の値を表示するマクロ
         // {} がプレースホルダーとなっている。
