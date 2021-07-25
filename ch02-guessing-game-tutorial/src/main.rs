@@ -20,10 +20,6 @@ fn main() {
     // 4. 生成された値を secret_number へ代入
     let secret_number = rand::thread_rng().gen_range(1..101);
 
-    // 文字列 "The secret number is: " と secret_number の値を表示するマクロ
-    // {} がプレースホルダーとなっている。
-    println!("The secret number is: {}", secret_number);
-
     // 無限ループ開始
     loop {
         // 文字列 "Please input your guess." を表示するマクロ
