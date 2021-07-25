@@ -70,7 +70,7 @@ fn main() {
             Err(_) => {
                 // 文字列 "Please type a number!" を表示する。
                 println!("Please type a number!");
-                // 後続の処理を中止して、次のループを開始する。
+                // 後続の処理を中止して、ループの次のステップを開始する。
                 continue;
             }
         };
