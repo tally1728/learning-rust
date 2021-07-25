@@ -7,8 +7,8 @@ use std::io;
 
 // メイン関数
 fn main() {
-    // 文字列 "Guess the number!" を表示するマクロ
-    println!("Guess the number!");
+    // 文字列 "Guess the number between 1 and 100!" を表示するマクロ
+    println!("Guess the number between 1 and 100!");
 
     // 1. 不変変数 secret_number を定義
     // 2. rand::thread_rng() 関数を呼び出して、
