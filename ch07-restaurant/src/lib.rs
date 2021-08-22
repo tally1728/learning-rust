@@ -87,3 +87,21 @@ mod listing_7_10 {
         let order2 = back_of_house::Appetizer::Salad;
     }
 }
+
+// Ch.07.4 use - Listing 7-11 & 7-12: use
+mod listing_7_11 {
+    mod front_of_house {
+        pub mod hosting {
+            pub fn add_to_waitlist() {}
+        }
+    }
+
+    // Absolute path
+    //use crate::listing_7_11::front_of_house::hosting;
+    // Relative path
+    use front_of_house::hosting;
+
+    pub fn eat_at_restaurant() {
+        hosting::add_to_waitlist();
+    }
+}
