@@ -1,3 +1,4 @@
+////////////////////////////////////////////////////////////
 // Ch.07.3 Paths - Listing 7-7: Absolute path & Relative path
 mod listing_7_7 {
     mod front_of_house {
@@ -28,6 +29,7 @@ mod listing_7_7 {
     }
 }
 
+////////////////////////////////////////////////////////////
 // Ch.07.3 Paths - Listing 7-8: Relative path w/ super
 mod listing_7_8 {
     fn serve_order() {}
@@ -41,6 +43,7 @@ mod listing_7_8 {
     }
 }
 
+////////////////////////////////////////////////////////////
 // Ch.07.3 Paths - Listing 7-9: pub struct
 mod listing_7_9 {
     mod back_of_house {
@@ -73,6 +76,7 @@ mod listing_7_9 {
     }
 }
 
+////////////////////////////////////////////////////////////
 // Ch.07.3 Paths - Listing 7-10: pub enum
 mod listing_7_10 {
     mod back_of_house {
@@ -88,6 +92,7 @@ mod listing_7_10 {
     }
 }
 
+////////////////////////////////////////////////////////////
 // Ch.07.4 use - Listing 7-11 & 7-12: use
 mod listing_7_11 {
     mod front_of_house {
@@ -106,6 +111,7 @@ mod listing_7_11 {
     }
 }
 
+////////////////////////////////////////////////////////////
 // Ch.07.4 use - Listing 7-17: pub use
 mod listing_7_17 {
     mod front_of_house {
@@ -117,7 +123,19 @@ mod listing_7_17 {
     // re-exporting
     pub use front_of_house::hosting;
 
-    pub fn eat_at_restaurant() {
-        hosting::add_to_waitlist();
-    }
+    pub fn eat_at_restaurant() {}
+}
+
+////////////////////////////////////////////////////////////
+// Ch.07.5 Separating Modules into Different Files
+// Listing 7-21
+
+// module declaration
+mod front_of_house;
+
+// re-exporting
+pub use front_of_house::hosting;
+
+pub fn eat_at_restaurant() {
+    hosting::add_to_waitlist();
 }
