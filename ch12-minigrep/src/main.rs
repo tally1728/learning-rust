@@ -1,7 +1,9 @@
 use std::env;
-use std::fs::File;
-// to get read_to_string() method enabled on File Struct
-use std::io::Read;
+use std::process;
+
+// from the library crate
+use ch12_minigrep::run;
+use ch12_minigrep::Config;
 
 fn main() {
     // pub fn args() -> Args
@@ -10,19 +12,15 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     //println!("{:?}", args);
 
-    let query = &args[1];
-    let filename = &args[2];
+    let config = Config::new(&args).unwrap_or_else(|err| {
+        println!("Problem parsing arguments: {}", err);
+        process::exit(1);
+    });
+    println!("Searching for {}", config.query);
+    println!("In file {}", config.filename);
 
-    println!("Searching for {}", query);
-    println!("In file {}", filename);
-
-    // pub fn open<P: AsRef<Path>>(path: P) -> Result<File>
-    let mut f = File::open(filename).expect("file not found");
-
-    let mut contents = String::new();
-    // fn read_to_string(&mut self, buf: &mut String) -> Result<usize>
-    f.read_to_string(&mut contents)
-        .expect("something went wrong reading the file");
-
-    println!("With text:\n{}", contents);
+    if let Err(e) = run(config) {
+        println!("Application error: {}", e);
+        process::exit(1);
+    }
 }
