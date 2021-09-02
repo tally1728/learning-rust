@@ -1,11 +1,13 @@
 use std::fs::File;
 // to get read_to_string() method enabled on File Struct
+use std::env;
 use std::io::Read;
 
 #[derive(PartialEq, Debug)]
 pub struct Config {
     pub query: String,
     pub filename: String,
+    pub case_sensitive: bool,
 }
 
 impl Config {
@@ -17,7 +19,15 @@ impl Config {
         let query = args[1].clone();
         let filename = args[2].clone();
 
-        Ok(Config { query, filename })
+        // pub fn var<K: AsRef<OsStr>>(key: K) -> Result<String, VarError>
+        // pub const fn is_err(&self) -> bool
+        let case_sensitive = env::var("CASE_INSENSITIVE").is_err();
+
+        Ok(Config {
+            query,
+            filename,
+            case_sensitive,
+        })
     }
 }
 
@@ -34,7 +44,13 @@ pub fn run(config: Config) -> std::io::Result<()> {
     // fn read_to_string(&mut self, buf: &mut String) -> Result<usize>
     f.read_to_string(&mut contents)?;
 
-    for line in search(&config.query, &contents) {
+    let results = if config.case_sensitive {
+        search(&config.query, &contents)
+    } else {
+        search_case_insensitive(&config.query, &contents)
+    };
+
+    for line in results {
         println!("{}", line);
     }
 
@@ -53,6 +69,19 @@ fn search<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
     result
 }
 
+fn search_case_insensitive<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
+    let query = query.to_lowercase();
+    let mut result = Vec::new();
+
+    for line in contents.lines() {
+        if line.to_lowercase().contains(&query) {
+            result.push(line);
+        }
+    }
+
+    result
+}
+
 ////////////////////////////////////////////////////////////
 // Tests
 //
@@ -60,6 +89,7 @@ fn search<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
 mod test {
     use super::run;
     use super::search;
+    use super::search_case_insensitive;
     use super::Config;
 
     #[test]
@@ -71,7 +101,7 @@ mod test {
     }
 
     #[test]
-    fn config_new_with_2args() {
+    fn config_new_with_2args_wo_option() {
         let query = "you";
         let filename = "poem.txt";
         let args = vec![
@@ -80,13 +110,9 @@ mod test {
             String::from(filename),
         ];
 
-        assert_eq!(
-            Config::new(&args),
-            Ok(Config {
-                query: String::from(query),
-                filename: String::from(filename)
-            })
-        );
+        let config = Config::new(&args).unwrap();
+        assert_eq!(config.query, String::from(query));
+        assert_eq!(config.filename, String::from(filename));
     }
 
     #[test]
@@ -96,6 +122,7 @@ mod test {
         let config = Config {
             query: String::from(query),
             filename: String::from(filename),
+            case_sensitive: true,
         };
 
         run(config)
@@ -109,6 +136,7 @@ mod test {
         let config = Config {
             query: String::from(query),
             filename: String::from(filename),
+            case_sensitive: true,
         };
 
         match run(config) {
@@ -120,13 +148,29 @@ mod test {
     }
 
     #[test]
-    fn one_result() {
+    fn case_sensitive() {
         let query = "duct";
         let contents = "\
 Rust:
 safe, fast, productive.
-Pick three.";
+Pick three.
+Duct tape.";
 
         assert_eq!(vec!["safe, fast, productive."], search(query, contents));
+    }
+
+    #[test]
+    fn case_insensitive() {
+        let query = "rUsT";
+        let contents = "\
+Rust:
+safe, fast, productive.
+Pick three.
+Trust me.";
+
+        assert_eq!(
+            vec!["Rust:", "Trust me."],
+            search_case_insensitive(query, contents)
+        );
     }
 }
