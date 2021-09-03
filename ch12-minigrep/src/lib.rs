@@ -11,23 +11,96 @@ pub struct Config {
 }
 
 impl Config {
+    // Arguments: `[-i/--ignore-case] <query> <filename>`
+    // <query> & <filename> must be specified => Err("not enough argument")
+    // unsupported option => Err("unrecognized option")
+    // `-i --another-option <query> <filename>` => Err("at most 1 option is allowed")
+    // unnecessary arguments after the 3rd will be ignored
     pub fn new(args: &[String]) -> Result<Config, &'static str> {
-        if args.len() < 3 {
+        if args.len() < 2 {
             return Err("not enough arguments");
         }
 
-        let query = args[1].clone();
-        let filename = args[2].clone();
+        let query;
+        let filename;
 
         // pub fn var<K: AsRef<OsStr>>(key: K) -> Result<String, VarError>
         // pub const fn is_err(&self) -> bool
-        let case_sensitive = env::var("CASE_INSENSITIVE").is_err();
+        let mut case_sensitive = env::var("CASE_INSENSITIVE").is_err();
+
+        // to a Vector of Arg Enum
+        let args: Vec<Arg> = args.iter().map(|s| Arg::parse(s)).collect();
+
+        match &args[1] {
+            Arg::IgnoreCaseOption => {
+                if args.len() < 4 {
+                    return Err("not enough arguments");
+                }
+
+                // the CLI Option takes priority!
+                case_sensitive = false;
+
+                if let Arg::String(s) = &args[2] {
+                    query = s.clone();
+                } else {
+                    // --ignore-case --another-one <query> <filename>
+                    return Err("at most 1 option is allowed");
+                }
+
+                if let Arg::String(s) = &args[3] {
+                    filename = s.clone();
+                } else {
+                    // --ignore-case <query> --another-one <filename>
+                    return Err("at most 1 option is allowed");
+                }
+            }
+            Arg::WrongOption(_) => {
+                // --wrong-option <query> <filename>
+                return Err("unrecognized option");
+            }
+            Arg::String(_) => {
+                if args.len() < 3 {
+                    return Err("not enough arguments");
+                }
+
+                if let Arg::String(s) = &args[1] {
+                    query = s.clone();
+                } else {
+                    // <query> -i <filename>
+                    return Err("options must be specified before pattern and filename");
+                }
+
+                if let Arg::String(s) = &args[2] {
+                    filename = s.clone();
+                } else {
+                    // <query> <filename> -i
+                    return Err("options must be specified before pattern and filename");
+                }
+            }
+        }
 
         Ok(Config {
             query,
             filename,
             case_sensitive,
         })
+    }
+}
+
+#[derive(PartialEq, Debug)]
+enum Arg {
+    IgnoreCaseOption,
+    WrongOption(String),
+    String(String),
+}
+
+impl Arg {
+    fn parse(s: &str) -> Arg {
+        match s {
+            "-i" | "--ignore-case" => Arg::IgnoreCaseOption,
+            s if s.starts_with("-") => Arg::WrongOption(String::from(s)),
+            s => Arg::String(String::from(s)),
+        }
     }
 }
 
@@ -90,10 +163,18 @@ mod test {
     use super::run;
     use super::search;
     use super::search_case_insensitive;
+    use super::Arg;
     use super::Config;
 
     #[test]
-    fn config_new_with_1arg() {
+    fn config_new_length1() {
+        let args = vec![String::from("cmd")];
+
+        assert_eq!(Config::new(&args), Err("not enough arguments"));
+    }
+
+    #[test]
+    fn config_new_length2_1query() {
         let query = "you";
         let args = vec![String::from("cmd"), String::from(query)];
 
@@ -101,7 +182,49 @@ mod test {
     }
 
     #[test]
-    fn config_new_with_2args_wo_option() {
+    fn config_new_length2_1_option() {
+        let option = "--ignore-case";
+        let args = vec![String::from("cmd"), String::from(option)];
+
+        assert_eq!(Config::new(&args), Err("not enough arguments"));
+    }
+
+    #[test]
+    fn config_new_length2_1wrong_option() {
+        let option = "--wrong-one";
+        let args = vec![String::from("cmd"), String::from(option)];
+
+        assert_eq!(Config::new(&args), Err("unrecognized option"));
+    }
+
+    #[test]
+    fn config_new_length3_1option_1query() {
+        let option = "--ignore-case";
+        let query = "you";
+        let args = vec![
+            String::from("cmd"),
+            String::from(option),
+            String::from(query),
+        ];
+
+        assert_eq!(Config::new(&args), Err("not enough arguments"));
+    }
+
+    #[test]
+    fn config_new_length3_1wrong_option_1query() {
+        let option = "--wrong-one";
+        let query = "you";
+        let args = vec![
+            String::from("cmd"),
+            String::from(option),
+            String::from(query),
+        ];
+
+        assert_eq!(Config::new(&args), Err("unrecognized option"));
+    }
+
+    #[test]
+    fn config_new_length3_1query_1filename() {
         let query = "you";
         let filename = "poem.txt";
         let args = vec![
@@ -113,6 +236,129 @@ mod test {
         let config = Config::new(&args).unwrap();
         assert_eq!(config.query, String::from(query));
         assert_eq!(config.filename, String::from(filename));
+    }
+
+    #[test]
+    fn config_new_length3_1query_1option() {
+        let query = "you";
+        let option = "-i";
+        let args = vec![
+            String::from("cmd"),
+            String::from(query),
+            String::from(option),
+        ];
+
+        assert_eq!(
+            Config::new(&args),
+            Err("options must be specified before pattern and filename")
+        );
+    }
+
+    #[test]
+    fn config_new_length4_1option_1query_1filename() {
+        let option = "--ignore-case";
+        let query = "you";
+        let filename = "poem.txt";
+        let args = vec![
+            String::from("cmd"),
+            String::from(option),
+            String::from(query),
+            String::from(filename),
+        ];
+
+        let config = Config::new(&args).unwrap();
+        assert_eq!(config.query, String::from(query));
+        assert_eq!(config.filename, String::from(filename));
+        assert_eq!(config.case_sensitive, false);
+    }
+
+    #[test]
+    fn config_new_length4_2options_1query() {
+        let option_1 = "--ignore-case";
+        let option_2 = "--another-one";
+        let query = "you";
+        let args = vec![
+            String::from("cmd"),
+            String::from(option_1),
+            String::from(option_2),
+            String::from(query),
+        ];
+
+        assert_eq!(Config::new(&args), Err("at most 1 option is allowed"));
+    }
+
+    #[test]
+    fn config_new_length4_1wrong_option_1query_1filename() {
+        let option = "--wrong-one";
+        let query = "you";
+        let filename = "poem.txt";
+        let args = vec![
+            String::from("cmd"),
+            String::from(option),
+            String::from(query),
+            String::from(filename),
+        ];
+
+        assert_eq!(Config::new(&args), Err("unrecognized option"));
+    }
+
+    #[test]
+    fn config_new_length4_1query_1filename_something() {
+        let query = "you";
+        let filename = "poem.txt";
+        let s = "something";
+        let args = vec![
+            String::from("cmd"),
+            String::from(query),
+            String::from(filename),
+            String::from(s),
+        ];
+
+        let config = Config::new(&args).unwrap();
+        assert_eq!(config.query, String::from(query));
+        assert_eq!(config.filename, String::from(filename));
+    }
+
+    #[test]
+    fn config_new_length4_1query_1option_1filename() {
+        let query = "you";
+        let option = "-i";
+        let filename = "poem.txt";
+        let args = vec![
+            String::from("cmd"),
+            String::from(query),
+            String::from(option),
+            String::from(filename),
+        ];
+
+        assert_eq!(
+            Config::new(&args),
+            Err("options must be specified before pattern and filename")
+        );
+    }
+
+    #[test]
+    fn arg_parse_i_option() {
+        let arg = "-i";
+        assert_eq!(Arg::parse(arg), Arg::IgnoreCaseOption);
+    }
+
+    #[test]
+    fn arg_parse_ignore_case_option() {
+        let arg = "--ignore-case";
+        assert_eq!(Arg::parse(arg), Arg::IgnoreCaseOption);
+    }
+
+    #[test]
+    fn arg_parse_wrong_option() {
+        let arg = "--wrong-one";
+        assert_eq!(Arg::parse(arg), Arg::WrongOption(String::from(arg)));
+    }
+
+    #[test]
+    fn arg_parse_string() {
+        let arg = "hello";
+        assert_eq!(Arg::parse(arg), Arg::String(String::from(arg)));
     }
 
     #[test]
