@@ -16,7 +16,85 @@ impl Config {
     // unsupported option => Err("unrecognized option")
     // `-i --another-option <query> <filename>` => Err("at most 1 option is allowed")
     // unnecessary arguments after the 3rd will be ignored
-    pub fn new(args: &[String]) -> Result<Config, &'static str> {
+    pub fn new(args: &Vec<String>) -> Result<Config, &'static str> {
+        let query;
+        let filename;
+
+        // pub fn var<K: AsRef<OsStr>>(key: K) -> Result<String, VarError>
+        // pub const fn is_err(&self) -> bool
+        let mut case_sensitive = env::var("CASE_INSENSITIVE").is_err();
+
+        // convert String to Arg Enum
+        let mut it = args.iter().skip(1).map(|s| Arg::parse(&s));
+
+        // 1st arg
+        match it.next() {
+            Some(Arg::IgnoreCaseOption) => {
+                // the CLI Option takes priority!
+                case_sensitive = false;
+
+                // 2nd arg
+                match it.next() {
+                    Some(Arg::String(s)) => {
+                        query = s.clone();
+                    }
+                    None => {
+                        return Err("not enough arguments");
+                    }
+                    _ => {
+                        // --ignore-case --another-one <query> <filename>
+                        return Err("at most 1 option is allowed");
+                    }
+                }
+
+                // 3rd arg
+                match it.next() {
+                    Some(Arg::String(s)) => {
+                        filename = s.clone();
+                    }
+                    None => {
+                        return Err("not enough arguments");
+                    }
+                    _ => {
+                        // --ignore-case <query> --another-one <filename>
+                        return Err("at most 1 option is allowed");
+                    }
+                }
+            }
+            Some(Arg::WrongOption(_)) => {
+                // --wrong-option <query> <filename>
+                return Err("unrecognized option");
+            }
+            Some(Arg::String(s)) => {
+                query = s.clone();
+
+                // 2nd arg
+                match it.next() {
+                    Some(Arg::String(s)) => {
+                        filename = s.clone();
+                    }
+                    None => {
+                        return Err("not enough arguments");
+                    }
+                    _ => {
+                        // <query> <filename> -i
+                        return Err("options must be specified before pattern and filename");
+                    }
+                }
+            }
+            None => {
+                return Err("not enough arguments");
+            }
+        }
+
+        Ok(Config {
+            query,
+            filename,
+            case_sensitive,
+        })
+    }
+
+    pub fn new_backup(args: &Vec<String>) -> Result<Config, &'static str> {
         if args.len() < 2 {
             return Err("not enough arguments");
         }
@@ -29,7 +107,7 @@ impl Config {
         let mut case_sensitive = env::var("CASE_INSENSITIVE").is_err();
 
         // to a Vector of Arg Enum
-        let args: Vec<Arg> = args.iter().map(|s| Arg::parse(s)).collect();
+        let args: Vec<Arg> = args.iter().map(|s| Arg::parse(&s)).collect();
 
         match &args[1] {
             Arg::IgnoreCaseOption => {
@@ -131,28 +209,17 @@ pub fn run(config: Config) -> std::io::Result<()> {
 }
 
 fn search<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
-    let mut result = Vec::new();
-
-    for line in contents.lines() {
-        if line.contains(query) {
-            result.push(line);
-        }
-    }
-
-    result
+    contents
+        .lines()
+        .filter(|line| line.contains(query))
+        .collect()
 }
 
 fn search_case_insensitive<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
-    let query = query.to_lowercase();
-    let mut result = Vec::new();
-
-    for line in contents.lines() {
-        if line.to_lowercase().contains(&query) {
-            result.push(line);
-        }
-    }
-
-    result
+    contents
+        .lines()
+        .filter(|line| line.to_lowercase().contains(&query.to_lowercase()))
+        .collect()
 }
 
 ////////////////////////////////////////////////////////////
