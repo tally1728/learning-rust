@@ -1,3 +1,4 @@
+////////////////////////////////////////////////////////////
 // State Pattern
 pub mod state_pattern {
     pub struct Post {
@@ -199,6 +200,57 @@ pub mod state_pattern {
     }
 }
 
+////////////////////////////////////////////////////////////
+// Example of self: Box<Self>
+//
+mod ex_box_self {
+    fn ex_box_self() {
+        // Box<Fuga>
+        let obj = Box::new(Fuga {});
+        obj.move_self();
+        let obj = Box::new(Fuga {});
+        obj.move_box();
+
+        // Trait Object: Box<dyn Hoge>
+        let obj: Box<dyn Hoge> = Box::new(Fuga {});
+        // obj.move_self() = obj.deref().move_self()
+        // -> self: dyn Hoge
+        // error[E0161]: cannot move a value of type dyn Hoge: the size of dyn Hoge cannot be
+        // statically determined
+        //obj.move_self();
+        obj.move_box();
+    }
+
+    trait Hoge {
+        fn move_self(self);
+        fn move_box(self: Box<Self>);
+    }
+
+    #[derive(Debug)]
+    struct Fuga {}
+
+    impl Hoge for Fuga {
+        fn move_self(self) {
+            // error[E0308]: mismatched types
+            // expected `u32`, found struct `Fuga`
+            //let tmp: u32 = self;
+            let tmp: Self = self;
+            println!("Fuga::move_self {:?}", tmp);
+        }
+
+        fn move_box(self: Box<Self>) {
+            // error[E0308]: mismatched types
+            // expected `u32`, found struct `Box`
+            //let tmp: u32 = self;
+            //let tmp: Box<Self> = self;
+            //let tmp: Self = *tmp;
+            let tmp = *self;
+            println!("Fuga::move_box {:?}", tmp);
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////
 // 2. Encoding State & Behavior as Types
 pub mod encoding_state {
     // Constructor & Final State
