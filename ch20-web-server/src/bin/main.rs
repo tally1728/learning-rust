@@ -1,10 +1,15 @@
 use std::fs::File;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
+use std::thread;
+use std::time::Duration;
+
+use ch20_web_server::ThreadPool;
 
 fn main() {
     // fn bind<A: ToSocketAddrs>(addr: A) -> Result<TcpListener>
     let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
+    let pool = ThreadPool::new(4);
 
     // fn incoming(&self) -> Incoming
     // struct Incoming: An iterator that infinitely accepts connections on a TcpListener.
@@ -15,7 +20,9 @@ fn main() {
         let stream = stream.unwrap();
         println!("Connection established!");
 
-        handle_connection(stream);
+        pool.execute(|| {
+            handle_connection(stream);
+        });
     }
 }
 
@@ -30,8 +37,13 @@ fn handle_connection(mut stream: TcpStream) {
     ////////////////////////////////////////////////////////
     // Validate HTTP Request
     let get = b"GET / HTTP/1.1\r\n";
+    let sleep = b"GET /sleep HTTP/1.1\r\n";
     let (status_line, filename) = if buffer.starts_with(get) {
         println!("Request: GET / HTTP/1.1");
+        ("HTTP/1.1 200 OK\r\n\r\n", "hello.html")
+    } else if buffer.starts_with(sleep) {
+        println!("Request: GET /sleep HTTP/1.1");
+        thread::sleep(Duration::from_secs(5));
         ("HTTP/1.1 200 OK\r\n\r\n", "hello.html")
     } else {
         println!("Request: Wrong Path!");
