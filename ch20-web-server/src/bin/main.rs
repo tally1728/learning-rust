@@ -18,12 +18,14 @@ fn main() {
         // stream: TcpStream
         // struct TcpSteream: A TCP stream between a local and a remote socket.
         let stream = stream.unwrap();
-        println!("Connection established!");
+        //println!("Connection established!");
 
         pool.execute(|| {
             handle_connection(stream);
         });
     }
+
+    println!("main() - Shutting down.");
 }
 
 fn handle_connection(mut stream: TcpStream) {
@@ -39,14 +41,14 @@ fn handle_connection(mut stream: TcpStream) {
     let get = b"GET / HTTP/1.1\r\n";
     let sleep = b"GET /sleep HTTP/1.1\r\n";
     let (status_line, filename) = if buffer.starts_with(get) {
-        println!("Request: GET / HTTP/1.1");
+        //println!("Request: GET / HTTP/1.1");
         ("HTTP/1.1 200 OK\r\n\r\n", "hello.html")
     } else if buffer.starts_with(sleep) {
-        println!("Request: GET /sleep HTTP/1.1");
+        //println!("Request: GET /sleep HTTP/1.1");
         thread::sleep(Duration::from_secs(5));
         ("HTTP/1.1 200 OK\r\n\r\n", "hello.html")
     } else {
-        println!("Request: Wrong Path!");
+        //println!("Request: Wrong Path!");
         ("HTTP/1.1 404 NOT FOUND\r\n\r\n", "404.html")
     };
 
@@ -66,5 +68,5 @@ fn handle_connection(mut stream: TcpStream) {
     stream.write(response.as_bytes()).unwrap();
     // fn flush(&mut self) -> Result<()>
     stream.flush().unwrap();
-    println!("Status: {}", status_line);
+    //println!("Status: {}", status_line);
 }

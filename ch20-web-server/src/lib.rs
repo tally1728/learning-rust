@@ -3,7 +3,7 @@ use std::thread;
 
 pub struct ThreadPool {
     workers: Vec<Worker>,
-    sender: mpsc::Sender<Job>,
+    sender: mpsc::Sender<Message>,
 }
 
 impl ThreadPool {
@@ -34,7 +34,25 @@ impl ThreadPool {
     where
         F: FnOnce() + Send + 'static,
     {
-        self.sender.send(Box::new(f)).unwrap();
+        self.sender.send(Message::NewJob(Box::new(f))).unwrap();
+    }
+}
+
+// for Graceful Shutdown
+impl Drop for ThreadPool {
+    fn drop(&mut self) {
+        println!("ThreadPool::drop() - Sending terminate message to all workers.");
+        for _ in &self.workers {
+            self.sender.send(Message::Terminate).unwrap();
+        }
+
+        println!("ThreadPool::drop() - Shutting down all workers.");
+        for worker in &mut self.workers {
+            println!("ThreadPool::drop() - Shutting down worker {}", worker.id);
+            if let Some(thread) = worker.thread.take() {
+                thread.join().unwrap();
+            }
+        }
     }
 }
 
@@ -43,27 +61,42 @@ impl ThreadPool {
 //type Job = Box<dyn FnOnce() + Send + 'static>;
 type Job = Box<dyn FnBox + Send + 'static>;
 
+enum Message {
+    NewJob(Job),
+    Terminate,
+}
+
 struct Worker {
     id: usize,
-    thread: thread::JoinHandle<()>,
+    thread: Option<thread::JoinHandle<()>>,
 }
 
 impl Worker {
-    fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Job>>>) -> Worker {
-        let thread = thread::spawn(move || loop {
-            let job = receiver.lock().unwrap().recv().unwrap();
-            println!("Worker {} got a job; executing.", id);
+    fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Message>>>) -> Worker {
+        let thread = Some(thread::spawn(move || loop {
+            let message = receiver.lock().unwrap().recv().unwrap();
 
-            // error[E0161]: cannot move a value of type dyn FnOnce() + Send: the size of dyn
-            // FnOnce() + Send cannot be statically determined
-            //(*job)();
+            match message {
+                Message::NewJob(job) => {
+                    println!("Worker {} got a job; executing.", id);
 
-            // FnBox: workaround to (*job)() of FnOnce Trait Object
-            job.call_box();
+                    // error[E0161]: cannot move a value of type dyn FnOnce() + Send: the size of dyn
+                    // FnOnce() + Send cannot be statically determined
+                    //(*job)();
 
-            // This is valid since Rust 1.35!
-            //job();
-        });
+                    // FnBox: workaround to (*job)() of FnOnce Trait Object
+                    job.call_box();
+
+                    // This is valid since Rust 1.35!
+                    //job();
+                }
+                Message::Terminate => {
+                    println!("Worker {} was told to terminate.", id);
+                    break;
+                }
+            };
+        }));
+
         Worker { id, thread }
     }
 }
